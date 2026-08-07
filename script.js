@@ -1,5 +1,5 @@
 // ============================================
-// SUPABASE CONFIG (UPDATED)
+// SUPABASE CONFIG
 // ============================================
 
 const SUPABASE_URL = "https://gfpujsqpppopvogkfyjj.supabase.co";
@@ -462,7 +462,7 @@ async function finishOnboarding() {
 }
 
 // ============================================
-// HOME - SWIPE
+// HOME - SWIPE (Tinder Style)
 // ============================================
 
 function renderSwipeCard() {
@@ -519,17 +519,22 @@ async function handleSwipe(action) {
 
     if (action === 'like') {
         try {
+            // Check if target already liked current user
             const existing = likes.find(l => l.from === target.id && l.to === currentUser.id);
             if (existing) {
+                // MATCH!
                 matches.push({ user1: currentUser.id, user2: target.id });
                 await supabaseInsert('matches', { user1: currentUser.id, user2: target.id });
-                alert(`You matched with ${target.name}!`);
+                alert(`🎉 You matched with ${target.name}!`);
                 renderMatches();
             } else {
+                // Save like
                 likes.push({ from: currentUser.id, to: target.id });
                 await supabaseInsert('likes', { from_user: currentUser.id, to_user: target.id });
             }
-        } catch (e) {}
+        } catch (e) {
+            console.log('Like error:', e);
+        }
     }
 
     swipeCount++;
@@ -598,7 +603,7 @@ function applySearch() {
                     <p>${u.district}</p>
                 </div>
                 <button class="like-btn ${alreadyLiked ? 'liked' : ''}" onclick="likeFromSearch(${u.id})">
-                    ${alreadyLiked ? 'Liked' : 'Like'}
+                    ${alreadyLiked ? '❤️ Liked' : '🤍 Like'}
                 </button>
             </div>
         `;
@@ -616,12 +621,12 @@ async function likeFromSearch(targetId) {
     if (existing) {
         matches.push({ user1: currentUser.id, user2: targetId });
         await supabaseInsert('matches', { user1: currentUser.id, user2: targetId });
-        alert(`You matched with ${target.name}!`);
+        alert(`🎉 You matched with ${target.name}!`);
         renderMatches();
     } else {
         likes.push({ from: currentUser.id, to: targetId });
         await supabaseInsert('likes', { from_user: currentUser.id, to_user: targetId });
-        alert(`You liked ${target.name}`);
+        alert(`❤️ You liked ${target.name}`);
     }
     applySearch();
 }
@@ -653,7 +658,7 @@ function renderMatches() {
                 <img src="${partner.photo}" alt="${partner.name}" />
                 <div class="info">
                     <h4>${partner.name}, ${partner.age}</h4>
-                    <p>${partner.district}</p>
+                    <p>📍 ${partner.district}</p>
                 </div>
                 <i class="fas fa-arrow-right chat-arrow"></i>
             </div>
@@ -666,7 +671,7 @@ function openChat(partnerId) {
     const partner = users.find(u => u.id === partnerId);
     document.getElementById('chat-partner-name').textContent = `${partner.name}, ${partner.age}`;
     document.getElementById('chat-messages').innerHTML = `
-        <div class="msg received">You matched! Say hi.</div>
+        <div class="msg received">👋 You matched! Say hi.</div>
     `;
     showScreen('screen-chat');
 }
@@ -698,7 +703,7 @@ function renderMessages() {
                 <img src="${partner.photo}" alt="${partner.name}" />
                 <div class="info">
                     <h4>${partner.name}, ${partner.age}</h4>
-                    <p>${partner.district}</p>
+                    <p>📍 ${partner.district}</p>
                 </div>
                 <i class="fas fa-chevron-right" style="color:var(--text-light);"></i>
             </div>
@@ -734,7 +739,7 @@ function sendMessage() {
     container.scrollTop = container.scrollHeight;
 
     setTimeout(() => {
-        container.innerHTML += `<div class="msg received">That's cool! Tell me more.</div>`;
+        container.innerHTML += `<div class="msg received">😊 That's cool! Tell me more.</div>`;
         container.scrollTop = container.scrollHeight;
     }, 1000);
 }

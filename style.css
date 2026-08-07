@@ -266,10 +266,11 @@ body {
 }
 .home-topbar button:hover { background: var(--background); }
 
-/* Swipe Card — Full Screen with Buttons Inside */
+/* Swipe Card — Full Screen + Buttons Inside */
 .swipe-card {
     flex: 1;
     min-height: 0;
+    max-height: 550px;
     border-radius: 16px;
     overflow: hidden;
     background: var(--white);
@@ -287,7 +288,7 @@ body {
 /* Name + Age — Bottom-Left */
 .swipe-card .card-info {
     position: absolute;
-    bottom: 90px;
+    bottom: 80px;
     left: 0;
     right: 0;
     padding: 20px 20px 10px;
