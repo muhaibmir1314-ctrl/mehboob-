@@ -1,9 +1,9 @@
 // ============================================
-// SUPABASE CONFIG (UPDATED WITH YOUR KEYS)
+// SUPABASE CONFIG (UPDATED)
 // ============================================
 
-const SUPABASE_URL = "https://nuiixbcwawkplemkpbol.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51aWl4YmN3YXdrbHBlbWtwYm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwODU0NTEsImV4cCI6MjEwMTY2MTQ1MX0.pcP4KSHaHIYcAYBr8G5PT7AlSY7p_dxcey7H9rrV72s";
+const SUPABASE_URL = "https://gfpujsqpppopvogkfyjj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmcHVqc3FwcHBvcHZvZ2tmeWpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwOTI0MTIsImV4cCI6MjEwMTY2ODQxMn0.-C5SRCnK1dnbf8iTUl0P-EZj8JUdK5TN19yOquCTWT8";
 
 // ============================================
 // DATA
