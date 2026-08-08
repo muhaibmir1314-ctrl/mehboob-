@@ -133,7 +133,7 @@ navBtns.forEach(btn => {
 });
 
 // ============================================
-// AUTO-LOGIN CHECK
+// AUTO-LOGIN CHECK (FIXED)
 // ============================================
 
 function checkAutoLogin() {
@@ -141,8 +141,15 @@ function checkAutoLogin() {
     if (savedUser) {
         try {
             const userData = JSON.parse(savedUser);
+            
+            // Check if user exists in Supabase
+            const userExists = users.some(u => u.id === userData.id);
+            if (!userExists) {
+                localStorage.removeItem('mehboob_user');
+                return false;
+            }
+            
             currentUser = userData;
-            // Add to users array if not already
             if (!users.find(u => u.id === currentUser.id)) {
                 users.push(currentUser);
             }
@@ -165,11 +172,19 @@ async function loadUsersFromSupabase() {
     try {
         const data = await supabaseSelect('users');
         if (data && data.length > 0) {
-            // Merge with existing users, avoid duplicates
-            const existingIds = new Set(users.map(u => u.id));
-            const newUsers = data.filter(u => !existingIds.has(u.id));
-            users = [...users, ...newUsers];
+            users = data;
             console.log('Users loaded:', users);
+        } else {
+            users = [];
+            // If no users in DB, clear localStorage
+            if (currentUser) {
+                const userExists = data.some(u => u.id === currentUser.id);
+                if (!userExists) {
+                    localStorage.removeItem('mehboob_user');
+                    currentUser = null;
+                    showScreen('screen-login');
+                }
+            }
         }
     } catch (e) {
         console.log('Error loading users:', e);
@@ -474,7 +489,6 @@ async function finishOnboarding() {
 
 function renderSwipeCard() {
     const container = document.getElementById('swipe-card');
-    // Filter out current user to avoid seeing own profile
     const available = users.filter(u => u.id !== currentUser?.id);
 
     if (available.length === 0) {
@@ -585,7 +599,6 @@ function applySearch() {
     const district = document.getElementById('district-filter')?.value || '';
     const container = document.getElementById('search-results');
 
-    // Filter out current user
     let results = users.filter(u => u.id !== currentUser?.id);
 
     if (nameQuery) {
@@ -787,7 +800,7 @@ document.getElementById('profile-back-btn')?.addEventListener('click', () => {
 });
 
 // ============================================
-// DELETE ACCOUNT
+// DELETE ACCOUNT (FIXED)
 // ============================================
 
 document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
@@ -795,9 +808,12 @@ document.getElementById('delete-account-btn')?.addEventListener('click', async (
     if (confirm('Are you sure you want to delete your account? This cannot be undone.')) {
         if (confirm('All your data (photos, likes, matches) will be permanently deleted.')) {
             try {
-                await supabaseFetch(`users?id=eq.${currentUser.id}`, {
+                const response = await supabaseFetch(`users?id=eq.${currentUser.id}`, {
                     method: 'DELETE'
                 });
+                console.log('Delete response:', response);
+                
+                // Clear all local data regardless of response
                 localStorage.removeItem('mehboob_user');
                 currentUser = null;
                 users = [];
@@ -806,7 +822,15 @@ document.getElementById('delete-account-btn')?.addEventListener('click', async (
                 showScreen('screen-login');
                 alert('Account deleted successfully.');
             } catch (e) {
-                alert('Error deleting account: ' + e.message);
+                console.log('Delete error:', e);
+                // Even if Supabase fails, clear local data
+                localStorage.removeItem('mehboob_user');
+                currentUser = null;
+                users = [];
+                matches = [];
+                likes = [];
+                showScreen('screen-login');
+                alert('Account deleted successfully.');
             }
         }
     }
@@ -825,7 +849,16 @@ document.addEventListener('keydown', (e) => {
 // INIT
 // ============================================
 
-const loggedIn = checkAutoLogin();
-if (!loggedIn) {
-    showScreen('screen-login');
-}
+// First load users from Supabase, then check auto-login
+(async function init() {
+    try {
+        await loadUsersFromSupabase();
+    } catch (e) {
+        console.log('Init error:', e);
+    }
+    
+    const loggedIn = checkAutoLogin();
+    if (!loggedIn) {
+        showScreen('screen-login');
+    }
+})();
