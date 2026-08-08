@@ -142,6 +142,10 @@ function checkAutoLogin() {
         try {
             const userData = JSON.parse(savedUser);
             currentUser = userData;
+            // Add to users array if not already
+            if (!users.find(u => u.id === currentUser.id)) {
+                users.push(currentUser);
+            }
             loadUsersFromSupabase();
             showScreen('screen-home');
             return true;
@@ -161,7 +165,10 @@ async function loadUsersFromSupabase() {
     try {
         const data = await supabaseSelect('users');
         if (data && data.length > 0) {
-            users = data;
+            // Merge with existing users, avoid duplicates
+            const existingIds = new Set(users.map(u => u.id));
+            const newUsers = data.filter(u => !existingIds.has(u.id));
+            users = [...users, ...newUsers];
             console.log('Users loaded:', users);
         }
     } catch (e) {
@@ -462,12 +469,13 @@ async function finishOnboarding() {
 }
 
 // ============================================
-// HOME - SWIPE (Tinder Style)
+// HOME - SWIPE
 // ============================================
 
 function renderSwipeCard() {
     const container = document.getElementById('swipe-card');
-    const available = users.filter(u => u.id !== currentUser.id);
+    // Filter out current user to avoid seeing own profile
+    const available = users.filter(u => u.id !== currentUser?.id);
 
     if (available.length === 0) {
         container.innerHTML = `
@@ -503,8 +511,8 @@ function renderSwipeCard() {
     `;
 }
 
-document.getElementById('action-like').addEventListener('click', () => handleSwipe('like'));
-document.getElementById('action-pass').addEventListener('click', () => handleSwipe('pass'));
+document.getElementById('action-like')?.addEventListener('click', () => handleSwipe('like'));
+document.getElementById('action-pass')?.addEventListener('click', () => handleSwipe('pass'));
 
 async function handleSwipe(action) {
     if (swipeCount >= dailySwipeLimit) {
@@ -512,23 +520,20 @@ async function handleSwipe(action) {
         return;
     }
 
-    const available = users.filter(u => u.id !== currentUser.id);
+    const available = users.filter(u => u.id !== currentUser?.id);
     if (available.length === 0) return;
 
     const target = available[currentSwipeIndex];
 
     if (action === 'like') {
         try {
-            // Check if target already liked current user
             const existing = likes.find(l => l.from === target.id && l.to === currentUser.id);
             if (existing) {
-                // MATCH!
                 matches.push({ user1: currentUser.id, user2: target.id });
                 await supabaseInsert('matches', { user1: currentUser.id, user2: target.id });
                 alert(`🎉 You matched with ${target.name}!`);
                 renderMatches();
             } else {
-                // Save like
                 likes.push({ from: currentUser.id, to: target.id });
                 await supabaseInsert('likes', { from_user: currentUser.id, to_user: target.id });
             }
@@ -546,11 +551,11 @@ async function handleSwipe(action) {
 // TOP BUTTONS
 // ============================================
 
-document.getElementById('home-messages-btn').addEventListener('click', () => {
+document.getElementById('home-messages-btn')?.addEventListener('click', () => {
     showScreen('screen-messages');
 });
 
-document.getElementById('home-profile-btn').addEventListener('click', () => {
+document.getElementById('home-profile-btn')?.addEventListener('click', () => {
     showScreen('screen-profile');
 });
 
@@ -560,25 +565,28 @@ document.getElementById('home-profile-btn').addEventListener('click', () => {
 
 function renderSearch() {
     const select = document.getElementById('district-filter');
-    select.innerHTML = `<option value="">All Districts</option>`;
-    DISTRICTS.forEach(d => {
-        select.innerHTML += `<option value="${d}">${d}</option>`;
-    });
+    if (select) {
+        select.innerHTML = `<option value="">All Districts</option>`;
+        DISTRICTS.forEach(d => {
+            select.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+    }
 
-    document.getElementById('search-apply-btn').addEventListener('click', applySearch);
-    document.getElementById('search-back-btn').addEventListener('click', () => showScreen('screen-home'));
+    document.getElementById('search-apply-btn')?.addEventListener('click', applySearch);
+    document.getElementById('search-back-btn')?.addEventListener('click', () => showScreen('screen-home'));
 
-    document.getElementById('search-name-input').addEventListener('keydown', (e) => {
+    document.getElementById('search-name-input')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') applySearch();
     });
 }
 
 function applySearch() {
-    const nameQuery = document.getElementById('search-name-input').value.trim().toLowerCase();
-    const district = document.getElementById('district-filter').value;
+    const nameQuery = document.getElementById('search-name-input')?.value.trim().toLowerCase() || '';
+    const district = document.getElementById('district-filter')?.value || '';
     const container = document.getElementById('search-results');
 
-    let results = users.filter(u => u.id !== currentUser.id);
+    // Filter out current user
+    let results = users.filter(u => u.id !== currentUser?.id);
 
     if (nameQuery) {
         results = results.filter(u => u.name.toLowerCase().includes(nameQuery));
@@ -588,13 +596,15 @@ function applySearch() {
         results = results.filter(u => u.district === district);
     }
 
+    if (!container) return;
+
     if (results.length === 0) {
         container.innerHTML = `<p style="color:var(--text-light);text-align:center;padding:20px;">No users found</p>`;
         return;
     }
 
     container.innerHTML = results.map(u => {
-        const alreadyLiked = likes.some(l => l.from === currentUser.id && l.to === u.id);
+        const alreadyLiked = likes.some(l => l.from === currentUser?.id && l.to === u.id);
         return `
             <div class="search-result-card">
                 <img src="${u.photo}" alt="${u.name}" />
@@ -602,7 +612,7 @@ function applySearch() {
                     <h4>${u.name}, ${u.age}</h4>
                     <p>${u.district}</p>
                 </div>
-                <button class="like-btn ${alreadyLiked ? 'liked' : ''}" onclick="likeFromSearch(${u.id})">
+                <button class="like-btn ${alreadyLiked ? 'liked' : ''}" onclick="likeFromSearch('${u.id}')">
                     ${alreadyLiked ? '❤️ Liked' : '🤍 Like'}
                 </button>
             </div>
@@ -614,10 +624,10 @@ async function likeFromSearch(targetId) {
     const target = users.find(u => u.id === targetId);
     if (!target) return;
 
-    const alreadyLiked = likes.some(l => l.from === currentUser.id && l.to === targetId);
+    const alreadyLiked = likes.some(l => l.from === currentUser?.id && l.to === targetId);
     if (alreadyLiked) return alert('You already liked this person');
 
-    const existing = likes.find(l => l.from === targetId && l.to === currentUser.id);
+    const existing = likes.find(l => l.from === targetId && l.to === currentUser?.id);
     if (existing) {
         matches.push({ user1: currentUser.id, user2: targetId });
         await supabaseInsert('matches', { user1: currentUser.id, user2: targetId });
@@ -637,6 +647,7 @@ async function likeFromSearch(targetId) {
 
 function renderMatches() {
     const container = document.getElementById('matches-list');
+    if (!container) return;
 
     if (matches.length === 0) {
         container.innerHTML = `
@@ -650,11 +661,11 @@ function renderMatches() {
     }
 
     container.innerHTML = matches.map(m => {
-        const partnerId = m.user1 === currentUser.id ? m.user2 : m.user1;
+        const partnerId = m.user1 === currentUser?.id ? m.user2 : m.user1;
         const partner = users.find(u => u.id === partnerId);
         if (!partner) return '';
         return `
-            <div class="match-card" onclick="openChat(${partner.id})">
+            <div class="match-card" onclick="openChat('${partner.id}')">
                 <img src="${partner.photo}" alt="${partner.name}" />
                 <div class="info">
                     <h4>${partner.name}, ${partner.age}</h4>
@@ -682,6 +693,7 @@ function openChat(partnerId) {
 
 function renderMessages() {
     const container = document.getElementById('messages-list');
+    if (!container) return;
 
     if (matches.length === 0) {
         container.innerHTML = `
@@ -695,11 +707,11 @@ function renderMessages() {
     }
 
     container.innerHTML = matches.map(m => {
-        const partnerId = m.user1 === currentUser.id ? m.user2 : m.user1;
+        const partnerId = m.user1 === currentUser?.id ? m.user2 : m.user1;
         const partner = users.find(u => u.id === partnerId);
         if (!partner) return '';
         return `
-            <div class="match-card" onclick="openChat(${partner.id})">
+            <div class="match-card" onclick="openChat('${partner.id}')">
                 <img src="${partner.photo}" alt="${partner.name}" />
                 <div class="info">
                     <h4>${partner.name}, ${partner.age}</h4>
@@ -711,7 +723,7 @@ function renderMessages() {
     }).join('');
 }
 
-document.getElementById('messages-back-btn').addEventListener('click', () => {
+document.getElementById('messages-back-btn')?.addEventListener('click', () => {
     showScreen('screen-home');
 });
 
@@ -719,18 +731,18 @@ document.getElementById('messages-back-btn').addEventListener('click', () => {
 // CHAT
 // ============================================
 
-document.getElementById('chat-back-btn').addEventListener('click', () => {
+document.getElementById('chat-back-btn')?.addEventListener('click', () => {
     showScreen('screen-matches');
 });
 
-document.getElementById('chat-send-btn').addEventListener('click', sendMessage);
-document.getElementById('chat-input-field').addEventListener('keydown', (e) => {
+document.getElementById('chat-send-btn')?.addEventListener('click', sendMessage);
+document.getElementById('chat-input-field')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendMessage();
 });
 
 function sendMessage() {
     const input = document.getElementById('chat-input-field');
-    const msg = input.value.trim();
+    const msg = input?.value.trim();
     if (!msg) return;
 
     const container = document.getElementById('chat-messages');
@@ -750,6 +762,7 @@ function sendMessage() {
 
 function renderProfile() {
     const container = document.getElementById('profile-content');
+    if (!container) return;
 
     if (!currentUser) {
         container.innerHTML = `<p>Please login</p>`;
@@ -769,7 +782,7 @@ function renderProfile() {
     `;
 }
 
-document.getElementById('profile-back-btn').addEventListener('click', () => {
+document.getElementById('profile-back-btn')?.addEventListener('click', () => {
     showScreen('screen-home');
 });
 
@@ -777,7 +790,8 @@ document.getElementById('profile-back-btn').addEventListener('click', () => {
 // DELETE ACCOUNT
 // ============================================
 
-document.getElementById('delete-account-btn').addEventListener('click', async () => {
+document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
+    if (!currentUser) return;
     if (confirm('Are you sure you want to delete your account? This cannot be undone.')) {
         if (confirm('All your data (photos, likes, matches) will be permanently deleted.')) {
             try {
