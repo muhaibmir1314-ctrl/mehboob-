@@ -235,7 +235,7 @@ body {
 .onboarding-buttons .btn-back:hover { border-color: var(--primary); }
 .onboarding-buttons .btn-next { flex: 1; }
 
-/* HOME — TINDER STYLE PERFECT */
+/* HOME — TINDER STYLE */
 .home-container {
     display: flex;
     flex-direction: column;
@@ -266,7 +266,7 @@ body {
 }
 .home-topbar button:hover { background: var(--background); }
 
-/* Swipe Card — Full Screen + Buttons Inside */
+/* Swipe Card — Full Screen */
 .swipe-card {
     flex: 1;
     min-height: 0;
@@ -314,24 +314,26 @@ body {
     text-shadow: 0 1px 8px rgba(0,0,0,0.3);
 }
 
-/* Action Buttons — Inside Card (Bottom-Center) */
+/* Action Buttons — CARD KE BEECH MEIN (MIDDLE) */
 .action-buttons {
     position: absolute;
-    bottom: 20px;
+    bottom: 50%;
+    transform: translateY(50%);
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    gap: 40px;
+    gap: 60px;
     padding: 0 20px;
     z-index: 10;
 }
+
 .action-btn {
-    width: 60px;
-    height: 60px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     border: none;
-    font-size: 28px;
+    font-size: 26px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -673,7 +675,7 @@ body {
     .vibe-grid { grid-template-columns: repeat(5, 1fr); gap:8px; }
     .vibe-btn { font-size:22px; padding:10px 0; }
     .action-btn { width:54px; height:54px; font-size:24px; }
-    .action-buttons { gap:32px; }
+    .action-buttons { gap:50px; }
     .bottom-nav { padding:6px 12px 12px; }
     .nav-btn { padding:6px 12px; font-size:20px; }
 }
