@@ -266,17 +266,17 @@ body {
 }
 .home-topbar button:hover { background: var(--background); }
 
-/* Swipe Card — Full Screen */
+/* Swipe Card — Center, Thoda Chhota */
 .swipe-card {
     flex: 1;
     min-height: 0;
-    max-height: 550px;
+    max-height: 460px;        /* ← CHHOTA */
+    margin: auto 0;           /* ← CENTER */
     border-radius: 16px;
     overflow: hidden;
     background: var(--white);
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     position: relative;
-    margin: 4px 0 12px;
 }
 .swipe-card img {
     width: 100%;
@@ -314,26 +314,24 @@ body {
     text-shadow: 0 1px 8px rgba(0,0,0,0.3);
 }
 
-/* Action Buttons — CARD KE BEECH MEIN (MIDDLE) */
+/* Action Buttons — Bottom of Card */
 .action-buttons {
     position: absolute;
-    bottom: 50%;
-    transform: translateY(50%);
+    bottom: 20px;
     left: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    gap: 60px;
+    gap: 50px;
     padding: 0 20px;
     z-index: 10;
 }
-
 .action-btn {
-    width: 58px;
-    height: 58px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     border: none;
-    font-size: 26px;
+    font-size: 28px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -675,7 +673,7 @@ body {
     .vibe-grid { grid-template-columns: repeat(5, 1fr); gap:8px; }
     .vibe-btn { font-size:22px; padding:10px 0; }
     .action-btn { width:54px; height:54px; font-size:24px; }
-    .action-buttons { gap:50px; }
+    .action-buttons { gap:40px; }
     .bottom-nav { padding:6px 12px 12px; }
     .nav-btn { padding:6px 12px; font-size:20px; }
 }

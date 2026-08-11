@@ -133,7 +133,7 @@ navBtns.forEach(btn => {
 });
 
 // ============================================
-// AUTO-LOGIN CHECK (FIXED)
+// AUTO-LOGIN CHECK
 // ============================================
 
 function checkAutoLogin() {
@@ -141,14 +141,6 @@ function checkAutoLogin() {
     if (savedUser) {
         try {
             const userData = JSON.parse(savedUser);
-            
-            // Check if user exists in Supabase
-            const userExists = users.some(u => u.id === userData.id);
-            if (!userExists) {
-                localStorage.removeItem('mehboob_user');
-                return false;
-            }
-            
             currentUser = userData;
             if (!users.find(u => u.id === currentUser.id)) {
                 users.push(currentUser);
@@ -172,19 +164,10 @@ async function loadUsersFromSupabase() {
     try {
         const data = await supabaseSelect('users');
         if (data && data.length > 0) {
-            users = data;
+            const existingIds = new Set(users.map(u => u.id));
+            const newUsers = data.filter(u => !existingIds.has(u.id));
+            users = [...users, ...newUsers];
             console.log('Users loaded:', users);
-        } else {
-            users = [];
-            // If no users in DB, clear localStorage
-            if (currentUser) {
-                const userExists = data.some(u => u.id === currentUser.id);
-                if (!userExists) {
-                    localStorage.removeItem('mehboob_user');
-                    currentUser = null;
-                    showScreen('screen-login');
-                }
-            }
         }
     } catch (e) {
         console.log('Error loading users:', e);
@@ -385,9 +368,30 @@ function renderOnboardingStep() {
                 reader.onload = (ev) => {
                     uploadedPhotos.push(ev.target.result);
                     renderPhotoPreview();
-                    if (uploadedPhotos.length >= 1) {
-                        nextBtn.classList.add('active');
-                        nextBtn.disabled = false;
+                    // Android 10/11 fix: setTimeout to ensure DOM updates
+                    setTimeout(() => {
+                        const nextBtn2 = document.getElementById('onboard-next');
+                        if (uploadedPhotos.length >= 1) {
+                            nextBtn2.classList.add('active');
+                            nextBtn2.disabled = false;
+                        }
+                    }, 100);
+                };
+                reader.onerror = () => {
+                    // Fallback for older Android
+                    try {
+                        const url = URL.createObjectURL(file);
+                        uploadedPhotos.push(url);
+                        renderPhotoPreview();
+                        setTimeout(() => {
+                            const nextBtn2 = document.getElementById('onboard-next');
+                            if (uploadedPhotos.length >= 1) {
+                                nextBtn2.classList.add('active');
+                                nextBtn2.disabled = false;
+                            }
+                        }, 100);
+                    } catch (err) {
+                        alert('Could not load image. Please try another.');
                     }
                 };
                 reader.readAsDataURL(file);
@@ -396,8 +400,11 @@ function renderOnboardingStep() {
         
         const existingPhotos = uploadedPhotos.length;
         if (existingPhotos > 0) {
-            nextBtn.classList.add('active');
-            nextBtn.disabled = false;
+            const nextBtn2 = document.getElementById('onboard-next');
+            if (nextBtn2) {
+                nextBtn2.classList.add('active');
+                nextBtn2.disabled = false;
+            }
         }
     }
 
@@ -406,29 +413,32 @@ function renderOnboardingStep() {
 
 function renderPhotoPreview() {
     const container = document.getElementById('photo-preview');
-    container.innerHTML = uploadedPhotos.map(p => `<img src="${p}" />`).join('');
+    if (container) {
+        container.innerHTML = uploadedPhotos.map(p => `<img src="${p}" />`).join('');
+    }
 }
 
 function handleOnboardNext() {
     const step = onboardingSteps[currentStep];
 
+    // Validate current step
     if (step.type === 'text') {
-        const val = document.getElementById('onboard-input').value.trim();
+        const val = document.getElementById('onboard-input')?.value.trim();
         if (!val) return alert('Please fill this field');
         onboardData[step.id] = val;
     } else if (step.type === 'number') {
-        const val = parseInt(document.getElementById('onboard-input').value);
+        const val = parseInt(document.getElementById('onboard-input')?.value);
         if (!val || val < 16 || val > 35) return alert('Age must be between 16-35');
         onboardData[step.id] = val;
     } else if (step.type === 'select') {
-        const val = document.getElementById('onboard-select').value;
+        const val = document.getElementById('onboard-select')?.value;
         if (!val) return alert('Please select an option');
         onboardData[step.id] = val;
     } else if (step.type === 'caste') {
-        let val = document.getElementById('onboard-select').value;
+        let val = document.getElementById('onboard-select')?.value;
         if (!val) return alert('Please select your caste');
         if (val === 'other') {
-            const otherVal = document.getElementById('caste-other-input').value.trim();
+            const otherVal = document.getElementById('caste-other-input')?.value.trim();
             if (!otherVal) return alert('Please type your caste');
             val = otherVal;
         }
@@ -800,7 +810,7 @@ document.getElementById('profile-back-btn')?.addEventListener('click', () => {
 });
 
 // ============================================
-// DELETE ACCOUNT (FIXED)
+// DELETE ACCOUNT
 // ============================================
 
 document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
@@ -808,12 +818,9 @@ document.getElementById('delete-account-btn')?.addEventListener('click', async (
     if (confirm('Are you sure you want to delete your account? This cannot be undone.')) {
         if (confirm('All your data (photos, likes, matches) will be permanently deleted.')) {
             try {
-                const response = await supabaseFetch(`users?id=eq.${currentUser.id}`, {
+                await supabaseFetch(`users?id=eq.${currentUser.id}`, {
                     method: 'DELETE'
                 });
-                console.log('Delete response:', response);
-                
-                // Clear all local data regardless of response
                 localStorage.removeItem('mehboob_user');
                 currentUser = null;
                 users = [];
@@ -823,7 +830,6 @@ document.getElementById('delete-account-btn')?.addEventListener('click', async (
                 alert('Account deleted successfully.');
             } catch (e) {
                 console.log('Delete error:', e);
-                // Even if Supabase fails, clear local data
                 localStorage.removeItem('mehboob_user');
                 currentUser = null;
                 users = [];
@@ -849,7 +855,6 @@ document.addEventListener('keydown', (e) => {
 // INIT
 // ============================================
 
-// First load users from Supabase, then check auto-login
 (async function init() {
     try {
         await loadUsersFromSupabase();
