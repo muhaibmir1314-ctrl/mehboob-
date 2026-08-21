@@ -64,6 +64,33 @@ async function supabaseSelect(table, query = '') {
 }
 
 // ============================================
+// PHOTO UPLOAD TO SUPABASE STORAGE
+// ============================================
+
+async function uploadPhotoToStorage(file) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const url = `${SUPABASE_URL}/storage/v1/object/photos/${fileName}`;
+    
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': file.type
+        },
+        body: file
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+    }
+    
+    return `${SUPABASE_URL}/storage/v1/object/public/photos/${fileName}`;
+}
+
+// ============================================
 // STATE
 // ============================================
 
@@ -133,6 +160,25 @@ navBtns.forEach(btn => {
 });
 
 // ============================================
+// LOAD USER DATA (LIKES + MATCHES)
+// ============================================
+
+async function loadUserData() {
+    if (!currentUser) return;
+    try {
+        const userLikes = await supabaseSelect('likes', `?from_user=eq.${currentUser.id}`);
+        likes = userLikes || [];
+
+        const userMatches = await supabaseSelect('matches', `?or=(user1.eq.${currentUser.id},user2.eq.${currentUser.id})`);
+        matches = userMatches || [];
+        
+        console.log('User data loaded:', { likes: likes.length, matches: matches.length });
+    } catch (e) {
+        console.error("Error loading user data:", e);
+    }
+}
+
+// ============================================
 // AUTO-LOGIN CHECK
 // ============================================
 
@@ -146,6 +192,7 @@ function checkAutoLogin() {
                 users.push(currentUser);
             }
             loadUsersFromSupabase();
+            loadUserData(); // <-- FIX: Load likes/matches on refresh
             showScreen('screen-home');
             return true;
         } catch (e) {
@@ -361,41 +408,33 @@ function renderOnboardingStep() {
         const area = document.getElementById('photo-upload-area');
         const inputFile = document.getElementById('photo-input');
         area.addEventListener('click', () => inputFile.click());
-        inputFile.addEventListener('change', (e) => {
+        
+        // FIX: Storage upload instead of Base64
+        inputFile.addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    uploadedPhotos.push(ev.target.result);
-                    renderPhotoPreview();
-                    // Android 10/11 fix: setTimeout to ensure DOM updates
-                    setTimeout(() => {
-                        const nextBtn2 = document.getElementById('onboard-next');
-                        if (uploadedPhotos.length >= 1) {
-                            nextBtn2.classList.add('active');
-                            nextBtn2.disabled = false;
-                        }
-                    }, 100);
-                };
-                reader.onerror = () => {
-                    // Fallback for older Android
-                    try {
-                        const url = URL.createObjectURL(file);
-                        uploadedPhotos.push(url);
-                        renderPhotoPreview();
-                        setTimeout(() => {
-                            const nextBtn2 = document.getElementById('onboard-next');
-                            if (uploadedPhotos.length >= 1) {
-                                nextBtn2.classList.add('active');
-                                nextBtn2.disabled = false;
-                            }
-                        }, 100);
-                    } catch (err) {
-                        alert('Could not load image. Please try another.');
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
+            const nextBtn2 = document.getElementById('onboard-next');
+            
+            nextBtn2.textContent = 'Uploading...';
+            nextBtn2.disabled = true;
+
+            try {
+                for (const file of files) {
+                    const publicUrl = await uploadPhotoToStorage(file);
+                    uploadedPhotos.push(publicUrl);
+                }
+                renderPhotoPreview();
+                
+                if (uploadedPhotos.length >= 1) {
+                    nextBtn2.classList.add('active');
+                    nextBtn2.disabled = false;
+                    nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                alert('Failed to upload image. Please try again.');
+                nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
+                nextBtn2.disabled = uploadedPhotos.length < 1;
+            }
         });
         
         const existingPhotos = uploadedPhotos.length;
@@ -421,7 +460,6 @@ function renderPhotoPreview() {
 function handleOnboardNext() {
     const step = onboardingSteps[currentStep];
 
-    // Validate current step
     if (step.type === 'text') {
         const val = document.getElementById('onboard-input')?.value.trim();
         if (!val) return alert('Please fill this field');
@@ -486,6 +524,7 @@ async function finishOnboarding() {
         
         localStorage.setItem('mehboob_user', JSON.stringify(currentUser));
         await loadUsersFromSupabase();
+        await loadUserData();
         showScreen('screen-home');
     } catch (e) {
         console.log('Error saving user:', e);
