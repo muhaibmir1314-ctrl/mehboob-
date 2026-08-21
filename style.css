@@ -266,12 +266,12 @@ body {
 }
 .home-topbar button:hover { background: var(--background); }
 
-/* Swipe Card — Center, Thoda Chhota */
+/* Swipe Card — Perfect Size */
 .swipe-card {
     flex: 1;
     min-height: 0;
-    max-height: 460px;        /* ← CHHOTA */
-    margin: auto 0;           /* ← CENTER */
+    max-height: 480px;
+    margin: auto 0;
     border-radius: 16px;
     overflow: hidden;
     background: var(--white);

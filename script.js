@@ -192,7 +192,7 @@ function checkAutoLogin() {
                 users.push(currentUser);
             }
             loadUsersFromSupabase();
-            loadUserData(); // <-- FIX: Load likes/matches on refresh
+            loadUserData();
             showScreen('screen-home');
             return true;
         } catch (e) {
@@ -409,7 +409,6 @@ function renderOnboardingStep() {
         const inputFile = document.getElementById('photo-input');
         area.addEventListener('click', () => inputFile.click());
         
-        // FIX: Storage upload instead of Base64
         inputFile.addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);
             const nextBtn2 = document.getElementById('onboard-next');
@@ -424,10 +423,14 @@ function renderOnboardingStep() {
                 }
                 renderPhotoPreview();
                 
+                // FORCE ENABLE FINISH BUTTON
                 if (uploadedPhotos.length >= 1) {
                     nextBtn2.classList.add('active');
                     nextBtn2.disabled = false;
                     nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
+                    nextBtn2.removeAttribute('disabled');
+                    nextBtn2.style.opacity = '1';
+                    nextBtn2.style.cursor = 'pointer';
                 }
             } catch (err) {
                 console.error('Upload error:', err);
@@ -443,6 +446,7 @@ function renderOnboardingStep() {
             if (nextBtn2) {
                 nextBtn2.classList.add('active');
                 nextBtn2.disabled = false;
+                nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
             }
         }
     }
