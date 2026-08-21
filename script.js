@@ -246,7 +246,7 @@ const onboardingSteps = [
     { id: 'castePreference', label: "Does caste matter to you?", subtitle: "This helps match you better", type: 'select', options: ['Yes', 'No', 'Maybe'] },
     { id: 'vibes', label: "Pick your vibes!", subtitle: "Choose 3 that represent you", type: 'vibes' },
     { id: 'bio', label: "Tell us about yourself", subtitle: "One line that defines you", type: 'text', placeholder: 'Love mountains & chai...' },
-    { id: 'photo', label: "Add your photos", subtitle: "Upload 1-3 photos (minimum 1)", type: 'photo' }
+    { id: 'photo', label: "Add a photo", subtitle: "Upload at least 1 photo", type: 'photo' }
 ];
 
 function startOnboarding() {
@@ -259,6 +259,9 @@ function startOnboarding() {
 }
 
 function renderOnboardingStep() {
+    if (currentStep < 0) currentStep = 0;
+    if (currentStep >= onboardingSteps.length) currentStep = onboardingSteps.length - 1;
+
     const step = onboardingSteps[currentStep];
     const container = document.getElementById('onboarding-content');
     const progress = document.getElementById('progress-fill');
@@ -296,7 +299,7 @@ function renderOnboardingStep() {
             html += `<div class="vibe-btn ${selected}" data-vibe="${v}">${v}</div>`;
         });
         html += `</div>`;
-        html += `<p style="font-size:14px;color:var(--text-light);">Selected: ${selectedVibes.length}/3</p>`;
+        html += `<p class="vibe-counter" style="font-size:14px;color:var(--text-light);">Selected: ${selectedVibes.length}/3</p>`;
     } else if (step.type === 'photo') {
         html += `
             <div class="photo-upload-area" id="photo-upload-area">
@@ -318,12 +321,19 @@ function renderOnboardingStep() {
 
     container.innerHTML = html;
 
+    if (step.type === 'photo' && uploadedPhotos.length > 0) {
+        renderPhotoPreview();
+    }
+
     const backBtn = document.getElementById('onboard-back');
     if (backBtn) {
         backBtn.addEventListener('click', () => {
             if (currentStep > 0) {
                 currentStep--;
                 renderOnboardingStep();
+                if (onboardingSteps[currentStep].type === 'photo' && uploadedPhotos.length > 0) {
+                    setTimeout(renderPhotoPreview, 50);
+                }
             }
         });
     }
@@ -390,7 +400,7 @@ function renderOnboardingStep() {
                     alert('You can only select 3 vibes!');
                 }
 
-                const counter = document.querySelector('#onboarding-content p');
+                const counter = document.querySelector('.vibe-counter');
                 if (counter) counter.textContent = `Selected: ${selectedVibes.length}/3`;
 
                 if (selectedVibes.length === 3) {
@@ -423,14 +433,14 @@ function renderOnboardingStep() {
                 }
                 renderPhotoPreview();
                 
-                // FORCE ENABLE FINISH BUTTON
                 if (uploadedPhotos.length >= 1) {
                     nextBtn2.classList.add('active');
                     nextBtn2.disabled = false;
                     nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
                     nextBtn2.removeAttribute('disabled');
-                    nextBtn2.style.opacity = '1';
+                    nextBtn2.style.pointerEvents = 'auto';
                     nextBtn2.style.cursor = 'pointer';
+                    nextBtn2.style.opacity = '1';
                 }
             } catch (err) {
                 console.error('Upload error:', err);
@@ -440,13 +450,11 @@ function renderOnboardingStep() {
             }
         });
         
-        const existingPhotos = uploadedPhotos.length;
-        if (existingPhotos > 0) {
+        if (uploadedPhotos.length > 0) {
             const nextBtn2 = document.getElementById('onboard-next');
             if (nextBtn2) {
                 nextBtn2.classList.add('active');
                 nextBtn2.disabled = false;
-                nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
             }
         }
     }
@@ -577,9 +585,6 @@ function renderSwipeCard() {
         </div>
     `;
 }
-
-document.getElementById('action-like')?.addEventListener('click', () => handleSwipe('like'));
-document.getElementById('action-pass')?.addEventListener('click', () => handleSwipe('pass'));
 
 async function handleSwipe(action) {
     if (swipeCount >= dailySwipeLimit) {
@@ -841,7 +846,7 @@ function renderProfile() {
         <div class="profile-field"><span class="label">Age</span><span class="value">${currentUser.age || ''}</span></div>
         <div class="profile-field"><span class="label">District</span><span class="value">${currentUser.district || ''}</span></div>
         <div class="profile-field"><span class="label">Caste</span><span class="value">${currentUser.caste || ''}</span></div>
-        <div class="profile-field"><span class="label">Caste Preference</span><span class="value">${currentUser.castePreference || ''}</span></div>
+        <div class="profile-field"><span class="label">Caste Preference</span><span class="value">${currentUser.caste_preference || ''}</span></div>
         <div class="profile-field"><span class="label">Vibes</span><span class="value">${(currentUser.vibes || []).join(' ')}</span></div>
         <div class="profile-field"><span class="label">Bio</span><span class="value">${currentUser.bio || ''}</span></div>
         <div class="profile-field"><span class="label">Photos</span><span class="value">${(currentUser.photos || []).length} uploaded</span></div>
@@ -890,8 +895,14 @@ document.getElementById('delete-account-btn')?.addEventListener('click', async (
 // ============================================
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') document.getElementById('action-pass')?.click();
-    if (e.key === 'ArrowRight') document.getElementById('action-like')?.click();
+    if (e.key === 'ArrowLeft') {
+        const passBtn = document.querySelector('.action-btn.pass');
+        if (passBtn) passBtn.click();
+    }
+    if (e.key === 'ArrowRight') {
+        const likeBtn = document.querySelector('.action-btn.like');
+        if (likeBtn) likeBtn.click();
+    }
 });
 
 // ============================================

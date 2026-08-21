@@ -266,11 +266,11 @@ body {
 }
 .home-topbar button:hover { background: var(--background); }
 
-/* Swipe Card — Perfect Size */
+/* Swipe Card — Perfect Center */
 .swipe-card {
     flex: 1;
     min-height: 0;
-    max-height: 480px;
+    max-height: min(480px, 70vh);
     margin: auto 0;
     border-radius: 16px;
     overflow: hidden;
@@ -648,7 +648,7 @@ body {
     max-width: 420px;
     width: 100%;
     background: var(--white);
-    padding: 8px 16px 16px;
+    padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
     justify-content: space-around;
     border-top: 1px solid var(--background-dark);
     z-index: 100;
@@ -674,7 +674,7 @@ body {
     .vibe-btn { font-size:22px; padding:10px 0; }
     .action-btn { width:54px; height:54px; font-size:24px; }
     .action-buttons { gap:40px; }
-    .bottom-nav { padding:6px 12px 12px; }
+    .bottom-nav { padding:6px 12px calc(12px + env(safe-area-inset-bottom)); }
     .nav-btn { padding:6px 12px; font-size:20px; }
 }
 
