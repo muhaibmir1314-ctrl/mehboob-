@@ -19,164 +19,42 @@
 <body>
 
     <!-- ========================================= -->
-    <!-- SCREEN 1: LOGIN                          -->
+    <!-- APP CONTAINER (SINGLE PAGE)              -->
     <!-- ========================================= -->
-    <div id="screen-login" class="screen active">
-        <div class="login-container">
-            <div class="logo-wrapper">
-                <div class="logo-icon">🍁</div>
-                <h1 class="app-name">Mehboob</h1>
-                <p class="tagline">Find your Mehboob</p>
-            </div>
+    <div id="app">
+        <!-- HEADER (Fixed) -->
+        <header id="app-header">
+            <button id="header-back-btn" class="header-btn" style="display:none;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 id="header-title">🍁 Mehboob</h1>
+            <div id="header-right"></div>
+        </header>
 
-            <div class="login-form">
-                <button id="continue-btn" class="btn-primary active">
-                    Continue <i class="fas fa-arrow-right"></i>
-                </button>
+        <!-- MAIN CONTENT (Dynamic) -->
+        <main id="app-content">
+            <!-- Rendered by JavaScript -->
+        </main>
 
-                <p class="terms">
-                    By continuing you agree to our <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 2: ONBOARDING                     -->
-    <!-- ========================================= -->
-    <div id="screen-onboarding" class="screen">
-        <div class="onboarding-container">
-            <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
-            </div>
-            <div id="onboarding-content">
-                <!-- Dynamic -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 3: HOME (Swipe)                   -->
-    <!-- ========================================= -->
-    <div id="screen-home" class="screen">
-        <div class="home-container">
-            <div class="home-topbar fixed-top">
-                <button id="home-messages-btn"><i class="fab fa-telegram-plane"></i></button>
-                <h2><span>🍁</span> Discover</h2>
-                <button id="home-profile-btn"><i class="fas fa-user-circle"></i></button>
-            </div>
-
-            <div id="swipe-card" class="swipe-card">
-                <!-- Dynamic -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 4: SEARCH                         -->
-    <!-- ========================================= -->
-    <div id="screen-search" class="screen">
-        <div class="search-container">
-            <div class="search-header">
-                <button id="search-back-btn"><i class="fas fa-arrow-left"></i></button>
-                <h2><i class="fas fa-search"></i> Search</h2>
-            </div>
-
-            <div class="search-filter">
-                <input type="text" id="search-name-input" placeholder="Search by name..." />
-            </div>
-
-            <div class="search-filter">
-                <select id="district-filter">
-                    <option value="">All Districts</option>
-                </select>
-            </div>
-
-            <button id="search-apply-btn" class="btn-primary active">Apply</button>
-
-            <div id="search-results-wrapper">
-                <div id="search-results">
-                    <!-- Dynamic -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 5: MATCHES                        -->
-    <!-- ========================================= -->
-    <div id="screen-matches" class="screen">
-        <div class="matches-container">
-            <h2><i class="fas fa-heart"></i> Matches</h2>
-            <div id="matches-list">
-                <!-- Dynamic -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 6: CHAT                           -->
-    <!-- ========================================= -->
-    <div id="screen-chat" class="screen">
-        <div class="chat-container">
-            <div class="chat-header">
-                <button id="chat-back-btn"><i class="fas fa-arrow-left"></i></button>
-                <span id="chat-partner-name">Name</span>
-            </div>
-            <div id="chat-messages">
-                <!-- Dynamic -->
-            </div>
-            <div class="chat-input">
-                <input type="text" id="chat-input-field" placeholder="Type a message..." />
-                <button id="chat-send-btn"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 7: MESSAGES                       -->
-    <!-- ========================================= -->
-    <div id="screen-messages" class="screen">
-        <div class="messages-container">
-            <div class="messages-header">
-                <button id="messages-back-btn"><i class="fas fa-arrow-left"></i></button>
-                <h2><i class="fab fa-telegram-plane"></i> Messages</h2>
-            </div>
-            <div id="messages-list">
-                <!-- Dynamic -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- SCREEN 8: PROFILE                        -->
-    <!-- ========================================= -->
-    <div id="screen-profile" class="screen">
-        <div class="profile-container">
-            <div class="profile-header">
-                <button id="profile-back-btn"><i class="fas fa-arrow-left"></i></button>
-                <h2><i class="fas fa-user"></i> Profile</h2>
-            </div>
-            <div id="profile-content">
-                <!-- Dynamic -->
-            </div>
-            <button id="delete-account-btn" class="btn-danger">Delete Account</button>
-        </div>
-    </div>
-
-    <!-- ========================================= -->
-    <!-- BOTTOM NAV                              -->
-    <!-- ========================================= -->
-    <div id="bottom-nav" class="bottom-nav">
-        <button data-screen="screen-home" class="nav-btn active">
-            <i class="fas fa-home"></i>
-        </button>
-        <button data-screen="screen-search" class="nav-btn">
-            <i class="fas fa-search"></i>
-        </button>
-        <button data-screen="screen-matches" class="nav-btn">
-            <i class="fas fa-heart"></i>
-        </button>
+        <!-- BOTTOM NAV (Fixed) -->
+        <nav id="bottom-nav">
+            <button data-page="home" class="nav-btn active">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button data-page="search" class="nav-btn">
+                <i class="fas fa-search"></i>
+                <span>Search</span>
+            </button>
+            <button data-page="matches" class="nav-btn">
+                <i class="fas fa-heart"></i>
+                <span>Matches</span>
+            </button>
+            <button data-page="profile" class="nav-btn">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </nav>
     </div>
 
     <script src="script.js"></script>
