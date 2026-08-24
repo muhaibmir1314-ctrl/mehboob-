@@ -26,8 +26,6 @@ const CASTES = [
     "Mughal", "Sufi", "Qadri", "Hamdani", "Gurezi"
 ];
 
-const VIBES = ["☕", "📚", "🎵", "🏔️", "🎮", "🌿", "🍕", "🏏", "🎬", "✈️", "🧘", "📸", "🏋️", "🎨", "💃"];
-
 // ============================================
 // SUPABASE HELPERS
 // ============================================
@@ -85,18 +83,15 @@ let users = [];
 let currentUser = null;
 let currentStep = 0;
 let onboardData = {};
-let selectedVibes = [];
 let uploadedPhotos = [];
-let currentSwipeIndex = 0;
 let likes = [];
 let matches = [];
 let currentMatchChat = null;
-let swipeCount = 0;
-let dailySwipeLimit = 10;
 let currentPage = 'home';
+let viewedProfileUser = null;
 
 // ============================================
-// DOM REFS (New SPA)
+// DOM REFS
 // ============================================
 
 const appContent = document.getElementById('app-content');
@@ -106,19 +101,16 @@ const headerRight = document.getElementById('header-right');
 const navBtns = document.querySelectorAll('.nav-btn');
 
 // ============================================
-// NAVIGATION (SPA)
+// NAVIGATION
 // ============================================
 
 function navigateTo(page, data = null) {
     currentPage = page;
-    // Update nav
     navBtns.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.page === page);
     });
-    // Show/hide back button
-    const backPages = ['onboarding', 'chat', 'messages'];
+    const backPages = ['onboarding', 'chat', 'messages', 'profile-view'];
     headerBackBtn.style.display = backPages.includes(page) ? 'block' : 'none';
-    // Render page
     switch (page) {
         case 'login': renderLogin(); break;
         case 'onboarding': renderOnboarding(); break;
@@ -128,45 +120,58 @@ function navigateTo(page, data = null) {
         case 'chat': renderChat(data); break;
         case 'messages': renderMessages(); break;
         case 'profile': renderProfile(); break;
+        case 'profile-view': renderProfileView(data); break;
         default: renderHome();
     }
 }
 
-// Back button
 headerBackBtn.addEventListener('click', () => {
     if (currentPage === 'onboarding') {
         if (currentStep > 0) { currentStep--; renderOnboarding(); }
         else navigateTo('login');
-    } else if (currentPage === 'chat') {
-        navigateTo('matches');
-    } else if (currentPage === 'messages') {
+    } else if (currentPage === 'chat' || currentPage === 'messages') {
+        navigateTo('home');
+    } else if (currentPage === 'profile-view') {
         navigateTo('home');
     } else {
         navigateTo('home');
     }
 });
 
-// Bottom nav
 navBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const page = btn.dataset.page;
-        if (page === 'profile' && !currentUser) { navigateTo('login'); return; }
-        if (page === 'matches' && !currentUser) { navigateTo('login'); return; }
-        if (page === 'search' && !currentUser) { navigateTo('login'); return; }
+        if (!currentUser && page !== 'home' && page !== 'login') {
+            navigateTo('login');
+            return;
+        }
         navigateTo(page);
     });
 });
 
-// Header right (profile icon on home)
+// ============================================
+// HEADER — HOME: Leaf + Messages | Others: Title with icon
+// ============================================
+
 function updateHeaderRight() {
-    if (currentPage === 'home' && currentUser) {
-        headerRight.innerHTML = `<button id="home-profile-btn" class="header-btn"><i class="fas fa-user-circle"></i></button>`;
-        document.getElementById('home-profile-btn')?.addEventListener('click', () => navigateTo('profile'));
-    } else if (currentPage === 'home' && !currentUser) {
-        headerRight.innerHTML = '';
-    } else {
-        headerRight.innerHTML = '';
+    headerRight.innerHTML = '';
+    if (currentUser && currentPage === 'home') {
+        // Only messages icon (paper plane) on home page
+        const messagesBtn = document.createElement('button');
+        messagesBtn.className = 'header-btn';
+        messagesBtn.innerHTML = '<i class="fas fa-paper-plane" style="color:var(--primary);font-size:20px;"></i>';
+        messagesBtn.addEventListener('click', () => navigateTo('messages'));
+        headerRight.appendChild(messagesBtn);
     }
+}
+
+function setHeaderTitle(page, title, icon = null) {
+    if (page === 'home') {
+        headerTitle.innerHTML = `<span class="header-leaf">🍁</span> Mehboob`;
+    } else {
+        headerTitle.innerHTML = icon ? `<span class="header-title-with-icon"><i class="fas fa-${icon}" style="color:var(--primary);font-size:16px;"></i> ${title}</span>` : title;
+    }
+    updateHeaderRight();
 }
 
 // ============================================
@@ -180,7 +185,7 @@ async function loadUserData() {
         likes = userLikes || [];
         const userMatches = await supabaseSelect('matches', `?or=(user1.eq.${currentUser.id},user2.eq.${currentUser.id})`);
         matches = userMatches || [];
-        console.log('User data loaded:', { likes: likes.length, matches: matches.length });
+        console.log('Data loaded:', { likes: likes.length, matches: matches.length });
     } catch (e) { console.error("Error loading user data:", e); }
 }
 
@@ -210,7 +215,7 @@ async function loadUsersFromSupabase() {
             const existingIds = new Set(users.map(u => u.id));
             const newUsers = data.filter(u => !existingIds.has(u.id));
             users = [...users, ...newUsers];
-            console.log('Users loaded:', users);
+            console.log('Users loaded:', users.length);
         }
     } catch (e) { console.log('Error loading users:', e); }
 }
@@ -220,8 +225,7 @@ async function loadUsersFromSupabase() {
 // ============================================
 
 function renderLogin() {
-    headerTitle.textContent = '🍁 Mehboob';
-    updateHeaderRight();
+    setHeaderTitle('login', 'Login');
     appContent.innerHTML = `
         <div class="login-container">
             <div class="logo-wrapper">
@@ -239,7 +243,6 @@ function renderLogin() {
         if (currentUser) { navigateTo('home'); return; }
         currentStep = 0;
         onboardData = {};
-        selectedVibes = [];
         uploadedPhotos = [];
         navigateTo('onboarding');
     });
@@ -253,17 +256,13 @@ const onboardingSteps = [
     { id: 'name', label: "What's your name?", subtitle: "What should we call you?", type: 'text', placeholder: 'Enter your name' },
     { id: 'age', label: "How old are you?", subtitle: "Age must be between 16-35", type: 'number', placeholder: '16-35', min: 16, max: 35 },
     { id: 'district', label: "Which district are you from?", subtitle: "Select your Kashmir district", type: 'select', options: DISTRICTS },
-    { id: 'gender', label: "What's your gender?", subtitle: "Help us know you better", type: 'select', options: ['Male', 'Female', 'Non-binary', 'Prefer not to say'] },
     { id: 'caste', label: "What's your caste?", subtitle: "If not listed, select 'Other' and type yours", type: 'caste' },
-    { id: 'castePreference', label: "Does caste matter to you?", subtitle: "This helps match you better", type: 'select', options: ['Yes', 'No', 'Maybe'] },
-    { id: 'vibes', label: "Pick your vibes!", subtitle: "Choose 3 that represent you", type: 'vibes' },
-    { id: 'bio', label: "Tell us about yourself", subtitle: "One line that defines you", type: 'text', placeholder: 'Love mountains & chai...' },
+    { id: 'bio', label: "Tell us about yourself", subtitle: "A short bio (max 100 chars)", type: 'text', placeholder: 'Love mountains & chai...', maxlength: 100 },
     { id: 'photo', label: "Add a photo", subtitle: "Upload at least 1 photo", type: 'photo' }
 ];
 
 function renderOnboarding() {
-    headerTitle.textContent = 'Create Profile';
-    updateHeaderRight();
+    setHeaderTitle('onboarding', 'Create Profile');
     if (currentStep < 0) currentStep = 0;
     if (currentStep >= onboardingSteps.length) currentStep = onboardingSteps.length - 1;
 
@@ -272,7 +271,11 @@ function renderOnboarding() {
     html += `<h2>${step.label}</h2><p class="subtitle">${step.subtitle}</p>`;
 
     if (step.type === 'text') {
-        html += `<input type="text" id="onboard-input" placeholder="${step.placeholder}" />`;
+        const maxAttr = step.maxlength ? `maxlength="${step.maxlength}"` : '';
+        html += `<input type="text" id="onboard-input" placeholder="${step.placeholder}" ${maxAttr} />`;
+        if (step.maxlength) {
+            html += `<div style="font-size:12px;color:var(--text-light);text-align:right;margin-top:-10px;margin-bottom:10px;"><span id="char-counter">0</span>/${step.maxlength}</div>`;
+        }
     } else if (step.type === 'number') {
         html += `<input type="number" id="onboard-input" placeholder="${step.placeholder}" min="${step.min}" max="${step.max}" />`;
     } else if (step.type === 'select') {
@@ -284,14 +287,6 @@ function renderOnboarding() {
         CASTES.forEach(c => { html += `<option value="${c}">${c}</option>`; });
         html += `<option value="other">Other (type yours)</option></select>`;
         html += `<div id="caste-other-container" class="caste-other-input"><input type="text" id="caste-other-input" placeholder="Type your caste..." /></div>`;
-    } else if (step.type === 'vibes') {
-        html += `<div class="vibe-grid">`;
-        VIBES.forEach(v => {
-            const selected = selectedVibes.includes(v) ? 'selected' : '';
-            html += `<div class="vibe-btn ${selected}" data-vibe="${v}">${v}</div>`;
-        });
-        html += `</div>`;
-        html += `<p class="vibe-counter" style="font-size:14px;color:var(--text-light);">Selected: ${selectedVibes.length}/3</p>`;
     } else if (step.type === 'photo') {
         html += `
             <div class="photo-upload-area" id="photo-upload-area">
@@ -315,20 +310,27 @@ function renderOnboarding() {
 
     appContent.innerHTML = html;
 
-    // Restore photo preview
     if (step.type === 'photo' && uploadedPhotos.length > 0) {
         const preview = document.getElementById('photo-preview');
         if (preview) preview.innerHTML = uploadedPhotos.map(p => `<img src="${p}" />`).join('');
     }
 
-    // Back button
+    if (step.type === 'text' && step.maxlength) {
+        const input = document.getElementById('onboard-input');
+        const counter = document.getElementById('char-counter');
+        if (input && counter) {
+            input.addEventListener('input', () => {
+                counter.textContent = input.value.length;
+            });
+        }
+    }
+
     document.getElementById('onboard-back')?.addEventListener('click', () => {
         if (currentStep > 0) { currentStep--; renderOnboarding(); }
     });
 
     const nextBtn = document.getElementById('onboard-next');
 
-    // Input handlers
     const input = document.getElementById('onboard-input');
     if (input && (step.type === 'text' || step.type === 'number')) {
         input.addEventListener('input', () => {
@@ -357,29 +359,6 @@ function renderOnboarding() {
         });
     }
 
-    // Vibes
-    if (step.type === 'vibes') {
-        document.querySelectorAll('.vibe-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const vibe = btn.dataset.vibe;
-                if (selectedVibes.includes(vibe)) {
-                    selectedVibes = selectedVibes.filter(v => v !== vibe);
-                    btn.classList.remove('selected');
-                } else if (selectedVibes.length < 3) {
-                    selectedVibes.push(vibe);
-                    btn.classList.add('selected');
-                } else {
-                    alert('You can only select 3 vibes!');
-                }
-                const counter = document.querySelector('.vibe-counter');
-                if (counter) counter.textContent = `Selected: ${selectedVibes.length}/3`;
-                if (selectedVibes.length === 3) { nextBtn.classList.add('active'); nextBtn.disabled = false; }
-                else { nextBtn.classList.remove('active'); nextBtn.disabled = true; }
-            });
-        });
-    }
-
-    // Photo upload
     if (step.type === 'photo') {
         const area = document.getElementById('photo-upload-area');
         const inputFile = document.getElementById('photo-input');
@@ -399,15 +378,16 @@ function renderOnboarding() {
                 if (uploadedPhotos.length >= 1) {
                     nextBtn2.classList.add('active');
                     nextBtn2.disabled = false;
-                    nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
+                    nextBtn2.textContent = 'Finish';
                     nextBtn2.removeAttribute('disabled');
                     nextBtn2.style.pointerEvents = 'auto';
                     nextBtn2.style.cursor = 'pointer';
+                    nextBtn2.style.opacity = '1';
                 }
             } catch (err) {
                 console.error('Upload error:', err);
                 alert('Failed to upload image. Please try again.');
-                nextBtn2.textContent = currentStep === onboardingSteps.length - 1 ? 'Finish' : 'Next →';
+                nextBtn2.textContent = 'Finish';
                 nextBtn2.disabled = uploadedPhotos.length < 1;
             }
         });
@@ -443,9 +423,6 @@ function handleOnboardNext() {
             val = otherVal;
         }
         onboardData[step.id] = val;
-    } else if (step.type === 'vibes') {
-        if (selectedVibes.length !== 3) return alert('Please select exactly 3 vibes');
-        onboardData[step.id] = selectedVibes;
     } else if (step.type === 'photo') {
         if (uploadedPhotos.length < 1) return alert('Please upload at least 1 photo');
         onboardData[step.id] = uploadedPhotos;
@@ -460,11 +437,13 @@ function handleOnboardNext() {
 
 async function finishOnboarding() {
     const userData = {
-        name: onboardData.name || "", age: onboardData.age || 0,
-        district: onboardData.district || "", gender: onboardData.gender || "",
-        caste: onboardData.caste || "", caste_preference: onboardData.castePreference || "",
-        vibes: onboardData.vibes || [], bio: onboardData.bio || "",
-        photo: onboardData.photo?.[0] || "", photos: onboardData.photo || [],
+        name: onboardData.name || "",
+        age: onboardData.age || 0,
+        district: onboardData.district || "",
+        caste: onboardData.caste || "",
+        bio: onboardData.bio || "",
+        photo: onboardData.photo?.[0] || "",
+        photos: onboardData.photo || [],
         phone: currentUser?.phone || "9876543210",
         premium: false, online: true
     };
@@ -489,106 +468,161 @@ async function finishOnboarding() {
 // ============================================
 
 function renderHome() {
-    headerTitle.textContent = '🍁 Discover';
-    updateHeaderRight();
-    // Add messages button to header right
-    const messagesBtn = document.createElement('button');
-    messagesBtn.className = 'header-btn';
-    messagesBtn.innerHTML = '<i class="fab fa-telegram-plane"></i>';
-    messagesBtn.style.marginRight = '8px';
-    messagesBtn.addEventListener('click', () => navigateTo('messages'));
-    const profileBtn = document.createElement('button');
-    profileBtn.className = 'header-btn';
-    profileBtn.innerHTML = '<i class="fas fa-user-circle"></i>';
-    profileBtn.addEventListener('click', () => navigateTo('profile'));
-    headerRight.innerHTML = '';
-    if (currentUser) {
-        headerRight.appendChild(messagesBtn);
-        headerRight.appendChild(profileBtn);
-    }
-
+    setHeaderTitle('home');
     const available = users.filter(u => u.id !== currentUser?.id);
-    let html = '';
+    let html = `<div class="feed-container">`;
     if (available.length === 0) {
-        html = `<div class="swipe-card"><div class="empty-state"><i class="fas fa-users"></i><p>No users yet</p><p style="font-size:14px;">Be the first to join!</p></div></div>`;
+        html += `<div class="feed-empty"><i class="fas fa-users"></i><p>No users yet</p><span>Be the first to join!</span></div>`;
     } else {
-        if (currentSwipeIndex >= available.length) currentSwipeIndex = 0;
-        const user = available[currentSwipeIndex];
-        html = `
-            <div class="swipe-card">
-                <img src="${user.photo}" alt="${user.name}" />
-                <div class="card-info">
-                    <h3>${user.name}, ${user.age}</h3>
-                    <div class="card-district">${user.district}</div>
-                    <div class="card-vibes">${user.vibes.join(' ')}</div>
+        available.forEach(user => {
+            const isLiked = likes.some(l => l.from_user === currentUser?.id && l.to_user === user.id);
+            const isMatched = matches.some(m => (m.user1 === currentUser?.id && m.user2 === user.id) || (m.user2 === currentUser?.id && m.user1 === user.id));
+            let btnText = '🤍 Request';
+            let btnClass = 'feed-action-btn request';
+            if (isMatched) { btnText = '💬 Chat'; btnClass = 'feed-action-btn chat'; }
+            else if (isLiked) { btnText = '⏳ Requested'; btnClass = 'feed-action-btn requested'; }
+            html += `
+                <div class="feed-card" onclick="viewProfile('${user.id}')">
+                    <div class="feed-row">
+                        <div class="feed-left">
+                            <img src="${user.photo}" class="feed-avatar" alt="${user.name}" />
+                            <div class="feed-info">
+                                <div class="feed-name-age">
+                                    <span class="feed-name">${user.name}</span>
+                                    <span class="feed-age">${user.age}</span>
+                                </div>
+                                <div class="feed-district"><i class="fas fa-map-pin"></i>${user.district}</div>
+                            </div>
+                        </div>
+                        <button class="${btnClass}" onclick="event.stopPropagation(); handleMatchAction('${user.id}')">${btnText}</button>
+                    </div>
                 </div>
-                <div class="action-buttons">
-                    <button class="action-btn pass" onclick="handleSwipe('pass')"><i class="fas fa-times"></i></button>
-                    <button class="action-btn like" onclick="handleSwipe('like')"><i class="fas fa-heart"></i></button>
-                </div>
-            </div>
-        `;
+            `;
+        });
     }
+    html += `</div>`;
     appContent.innerHTML = html;
 }
 
-async function handleSwipe(action) {
-    if (swipeCount >= dailySwipeLimit) {
-        alert('Daily swipe limit reached!');
-        return;
-    }
-    const available = users.filter(u => u.id !== currentUser?.id);
-    if (available.length === 0) return;
-    const target = available[currentSwipeIndex];
-    if (action === 'like') {
-        try {
-            const existing = likes.find(l => l.from === target.id && l.to === currentUser.id);
-            if (existing) {
-                matches.push({ user1: currentUser.id, user2: target.id });
-                await supabaseInsert('matches', { user1: currentUser.id, user2: target.id });
-                alert(`🎉 You matched with ${target.name}!`);
-                renderMatches();
-            } else {
-                likes.push({ from: currentUser.id, to: target.id });
-                await supabaseInsert('likes', { from_user: currentUser.id, to_user: target.id });
-            }
-        } catch (e) { console.log('Like error:', e); }
-    }
-    swipeCount++;
-    currentSwipeIndex++;
-    renderHome();
+function viewProfile(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    viewedProfileUser = user;
+    navigateTo('profile-view', { user });
 }
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    if (currentPage === 'home') {
-        if (e.key === 'ArrowLeft') {
-            const passBtn = document.querySelector('.action-btn.pass');
-            if (passBtn) passBtn.click();
-        }
-        if (e.key === 'ArrowRight') {
-            const likeBtn = document.querySelector('.action-btn.like');
-            if (likeBtn) likeBtn.click();
-        }
+async function handleMatchAction(targetId) {
+    if (!currentUser) { navigateTo('login'); return; }
+    const target = users.find(u => u.id === targetId);
+    if (!target) return;
+
+    const isMatched = matches.some(m => (m.user1 === currentUser.id && m.user2 === targetId) || (m.user2 === currentUser.id && m.user1 === targetId));
+    if (isMatched) {
+        currentMatchChat = targetId;
+        navigateTo('chat', { partner: target });
+        return;
     }
-});
+
+    const isLiked = likes.some(l => l.from_user === currentUser.id && l.to_user === targetId);
+    if (isLiked) {
+        alert('Request already sent!');
+        return;
+    }
+
+    const targetLiked = likes.some(l => l.from_user === targetId && l.to_user === currentUser.id);
+    if (targetLiked) {
+        const matchData = { user1: currentUser.id, user2: targetId };
+        try {
+            await supabaseInsert('matches', matchData);
+            matches.push(matchData);
+            alert(`🎉 You matched with ${target.name}!`);
+            renderHome();
+            return;
+        } catch (e) { console.log('Match error:', e); }
+    } else {
+        try {
+            await supabaseInsert('likes', { from_user: currentUser.id, to_user: targetId });
+            likes.push({ from_user: currentUser.id, to_user: targetId });
+            alert(`❤️ Request sent to ${target.name}`);
+            renderHome();
+        } catch (e) { console.log('Like error:', e); }
+    }
+}
+
+// ============================================
+// RENDER: PROFILE VIEW
+// ============================================
+
+function renderProfileView(data) {
+    const user = data?.user || viewedProfileUser;
+    if (!user) { navigateTo('home'); return; }
+    setHeaderTitle('profile-view', `${user.name}, ${user.age}`);
+
+    const isLiked = likes.some(l => l.from_user === currentUser?.id && l.to_user === user.id);
+    const isMatched = matches.some(m => (m.user1 === currentUser?.id && m.user2 === user.id) || (m.user2 === currentUser?.id && m.user1 === user.id));
+    const isOwn = user.id === currentUser?.id;
+
+    let actionHtml = '';
+    if (!isOwn) {
+        if (isMatched) {
+            actionHtml = `<button class="pv-action-btn chat" onclick="openChatFromProfile('${user.id}')">💬 Chat</button>`;
+        } else if (isLiked) {
+            actionHtml = `<button class="pv-action-btn requested" disabled>⏳ Requested</button>`;
+        } else {
+            actionHtml = `<button class="pv-action-btn" onclick="handleMatchActionFromProfile('${user.id}')">🤍 Match Request</button>`;
+        }
+    } else {
+        actionHtml = `<button class="pv-action-btn" onclick="navigateTo('profile')">Edit Profile</button>`;
+    }
+
+    const html = `
+        <div class="profile-view-container">
+            <div class="pv-header">
+                <span class="pv-name-age">${user.name}<span class="pv-age">, ${user.age}</span></span>
+                <span class="pv-district"><i class="fas fa-map-pin"></i>${user.district}</span>
+            </div>
+            <img src="${user.photo || 'https://i.pravatar.cc/400?img=11'}" class="pv-avatar" alt="${user.name}" />
+            <div class="pv-bio">${user.bio || 'Hey there!'}</div>
+            <div class="pv-info">
+                <div class="pv-field"><span class="label">District</span><span class="value">${user.district || '-'}</span></div>
+                <div class="pv-field"><span class="label">Caste</span><span class="value">${user.caste || '-'}</span></div>
+            </div>
+            ${actionHtml}
+        </div>
+    `;
+    appContent.innerHTML = html;
+}
+
+function openChatFromProfile(partnerId) {
+    const partner = users.find(u => u.id === partnerId);
+    currentMatchChat = partnerId;
+    navigateTo('chat', { partner });
+}
+
+async function handleMatchActionFromProfile(targetId) {
+    await handleMatchAction(targetId);
+    const user = users.find(u => u.id === targetId);
+    if (user) navigateTo('profile-view', { user });
+}
 
 // ============================================
 // RENDER: SEARCH
 // ============================================
 
 function renderSearch() {
-    headerTitle.textContent = '🔍 Search';
-    updateHeaderRight();
+    setHeaderTitle('search', 'Search', 'search');
     let html = `
         <div class="search-container">
-            <div class="search-header"><h2><i class="fas fa-search"></i> Search</h2></div>
-            <div class="search-filter"><input type="text" id="search-name-input" placeholder="Search by name..." /></div>
-            <div class="search-filter"><select id="district-filter"><option value="">All Districts</option>
+            <div class="search-filter">
+                <input type="text" id="search-name-input" placeholder="Search by name..." />
+            </div>
+            <div class="search-filter">
+                <select id="district-filter">
+                    <option value="">All Districts</option>
     `;
     DISTRICTS.forEach(d => { html += `<option value="${d}">${d}</option>`; });
     html += `</select></div>
-            <button id="search-apply-btn" class="btn-primary" style="background:var(--primary);color:white;padding:14px;border:none;border-radius:var(--radius-sm);font-weight:600;cursor:pointer;">Apply</button>
+            <button id="search-apply-btn">Apply</button>
             <div id="search-results-wrapper"><div id="search-results"></div></div>
         </div>
     `;
@@ -613,34 +647,15 @@ function applySearch() {
         return;
     }
     container.innerHTML = results.map(u => {
-        const alreadyLiked = likes.some(l => l.from === currentUser?.id && l.to === u.id);
+        const alreadyLiked = likes.some(l => l.from_user === currentUser?.id && l.to_user === u.id);
         return `
-            <div class="search-result-card">
+            <div class="search-result-card" onclick="viewProfile('${u.id}')">
                 <img src="${u.photo}" alt="${u.name}" />
                 <div class="info"><h4>${u.name}, ${u.age}</h4><p>${u.district}</p></div>
-                <button class="like-btn ${alreadyLiked ? 'liked' : ''}" onclick="likeFromSearch('${u.id}')">${alreadyLiked ? '❤️ Liked' : '🤍 Like'}</button>
+                <button class="like-btn ${alreadyLiked ? 'liked' : ''}" onclick="event.stopPropagation(); handleMatchAction('${u.id}')">${alreadyLiked ? '❤️ Liked' : '🤍 Like'}</button>
             </div>
         `;
     }).join('');
-}
-
-async function likeFromSearch(targetId) {
-    const target = users.find(u => u.id === targetId);
-    if (!target) return;
-    const alreadyLiked = likes.some(l => l.from === currentUser?.id && l.to === targetId);
-    if (alreadyLiked) return alert('You already liked this person');
-    const existing = likes.find(l => l.from === targetId && l.to === currentUser?.id);
-    if (existing) {
-        matches.push({ user1: currentUser.id, user2: targetId });
-        await supabaseInsert('matches', { user1: currentUser.id, user2: targetId });
-        alert(`🎉 You matched with ${target.name}!`);
-        renderMatches();
-    } else {
-        likes.push({ from: currentUser.id, to: targetId });
-        await supabaseInsert('likes', { from_user: currentUser.id, to_user: targetId });
-        alert(`❤️ You liked ${target.name}`);
-    }
-    applySearch();
 }
 
 // ============================================
@@ -648,11 +663,14 @@ async function likeFromSearch(targetId) {
 // ============================================
 
 function renderMatches() {
-    headerTitle.textContent = '❤️ Matches';
-    updateHeaderRight();
-    let html = `<div class="matches-container"><h2><i class="fas fa-heart"></i> Matches</h2><div id="matches-list">`;
+    setHeaderTitle('matches', 'Matches', 'heart');
+    let html = `<div class="matches-container"><div id="matches-list">`;
     if (matches.length === 0) {
-        html += `<div style="text-align:center;padding:40px 0;color:var(--text-light);"><i class="fas fa-heart" style="font-size:40px;opacity:0.2;display:block;margin-bottom:12px;"></i><p>No matches yet</p><p style="font-size:14px;">Keep swiping to find your connection!</p></div>`;
+        html += `<div style="text-align:center;padding:40px 0;color:var(--text-light);">
+            <i class="fas fa-heart" style="font-size:40px;opacity:0.2;display:block;margin-bottom:12px;"></i>
+            <p>No matches yet</p>
+            <p style="font-size:14px;">Send match requests to connect!</p>
+        </div>`;
     } else {
         html += matches.map(m => {
             const partnerId = m.user1 === currentUser?.id ? m.user2 : m.user1;
@@ -682,12 +700,15 @@ function openChat(partnerId) {
 // ============================================
 
 function renderChat(data) {
-    headerTitle.textContent = `💬 ${data?.partner?.name || 'Chat'}`;
-    updateHeaderRight();
     const partner = data?.partner || users.find(u => u.id === currentMatchChat);
     if (!partner) { navigateTo('matches'); return; }
+    setHeaderTitle('chat', `Chat with ${partner.name}`);
     let html = `
         <div class="chat-container">
+            <div class="chat-header">
+                <button onclick="navigateTo('matches')"><i class="fas fa-arrow-left"></i></button>
+                <span>${partner.name}</span>
+            </div>
             <div id="chat-messages">
                 <div class="msg received">👋 You matched! Say hi.</div>
             </div>
@@ -723,77 +744,77 @@ function sendMessage() {
 // ============================================
 
 function renderMessages() {
-    headerTitle.textContent = '💬 Messages';
-    updateHeaderRight();
-    let html = `<div class="messages-container"><div class="messages-header"><h2><i class="fab fa-telegram-plane"></i> Messages</h2></div><div id="messages-list">`;
+    setHeaderTitle('messages', 'Messages', 'comment-dots');
+    let html = `<div class="messages-container"><div id="messages-list">`;
     if (matches.length === 0) {
-        html += `<div style="text-align:center;padding:40px 0;color:var(--text-light);"><i class="fab fa-telegram-plane" style="font-size:40px;opacity:0.2;display:block;margin-bottom:12px;color:var(--primary);"></i><p>No messages yet</p><p style="font-size:14px;">Your chats will appear here</p></div>`;
+        html += `
+            <div style="text-align:center;padding:60px 20px;color:var(--text-light);">
+                <i class="fas fa-comment-dots" style="font-size:48px;opacity:0.2;display:block;margin-bottom:12px;color:var(--primary);"></i>
+                <p style="font-size:16px;font-weight:600;color:var(--text);">No messages yet</p>
+                <p style="font-size:13px;">Your chats will appear here</p>
+            </div>
+        `;
     } else {
-        html += matches.map(m => {
+        matches.forEach(m => {
             const partnerId = m.user1 === currentUser?.id ? m.user2 : m.user1;
             const partner = users.find(u => u.id === partnerId);
-            if (!partner) return '';
-            return `
-                <div class="match-card" onclick="openChat('${partner.id}')">
+            if (!partner) return;
+            const lastMsg = "Tap to start chatting!";
+            const time = "now";
+            html += `
+                <div class="chat-row" onclick="openChat('${partner.id}')">
                     <img src="${partner.photo}" alt="${partner.name}" />
-                    <div class="info"><h4>${partner.name}, ${partner.age}</h4><p>📍 ${partner.district}</p></div>
-                    <i class="fas fa-chevron-right" style="color:var(--text-light);"></i>
+                    <div class="chat-info">
+                        <div class="chat-top">
+                            <span class="chat-name">${partner.name}</span>
+                            <span class="chat-time">${time}</span>
+                        </div>
+                        <div class="chat-preview">${lastMsg}</div>
+                    </div>
+                    <i class="fas fa-chevron-right chat-chevron"></i>
                 </div>
             `;
-        }).join('');
+        });
     }
     html += `</div></div>`;
     appContent.innerHTML = html;
 }
 
 // ============================================
-// RENDER: PROFILE
+// RENDER: PROFILE (Own)
 // ============================================
 
 function renderProfile() {
-    headerTitle.textContent = '👤 Profile';
-    updateHeaderRight();
+    setHeaderTitle('profile', 'Profile', 'user');
     if (!currentUser) { navigateTo('login'); return; }
     let html = `
         <div class="profile-container">
-            <div id="profile-content">
-                <img src="${currentUser.photo || 'https://i.pravatar.cc/400?img=11'}" alt="${currentUser.name}" class="profile-avatar" />
-                <div class="profile-field"><span class="label">Name</span><span class="value">${currentUser.name || ''}</span></div>
-                <div class="profile-field"><span class="label">Age</span><span class="value">${currentUser.age || ''}</span></div>
-                <div class="profile-field"><span class="label">District</span><span class="value">${currentUser.district || ''}</span></div>
-                <div class="profile-field"><span class="label">Caste</span><span class="value">${currentUser.caste || ''}</span></div>
-                <div class="profile-field"><span class="label">Caste Preference</span><span class="value">${currentUser.caste_preference || ''}</span></div>
-                <div class="profile-field"><span class="label">Vibes</span><span class="value">${(currentUser.vibes || []).join(' ')}</span></div>
-                <div class="profile-field"><span class="label">Bio</span><span class="value">${currentUser.bio || ''}</span></div>
-                <div class="profile-field"><span class="label">Photos</span><span class="value">${(currentUser.photos || []).length} uploaded</span></div>
+            <img src="${currentUser.photo || 'https://i.pravatar.cc/400?img=11'}" class="profile-avatar" />
+            <div class="profile-name">${currentUser.name}</div>
+            <div class="profile-age">${currentUser.age}</div>
+            <div class="profile-info">
+                <div class="profile-field"><span class="label">District</span><span class="value">${currentUser.district || '-'}</span></div>
+                <div class="profile-field"><span class="label">Caste</span><span class="value">${currentUser.caste || '-'}</span></div>
+                <div class="profile-field"><span class="label">Bio</span><span class="value">${currentUser.bio || 'Hey there!'}</span></div>
             </div>
-            <button id="delete-account-btn" class="btn-danger">Delete Account</button>
+            <button id="delete-account-btn" class="delete-btn">Delete Account</button>
         </div>
     `;
     appContent.innerHTML = html;
     document.getElementById('delete-account-btn').addEventListener('click', async () => {
         if (!currentUser) return;
-        if (confirm('Are you sure you want to delete your account? This cannot be undone.')) {
-            if (confirm('All your data (photos, likes, matches) will be permanently deleted.')) {
-                try {
-                    await supabaseFetch(`users?id=eq.${currentUser.id}`, { method: 'DELETE' });
-                    localStorage.removeItem('mehboob_user');
-                    currentUser = null;
-                    users = [];
-                    matches = [];
-                    likes = [];
-                    navigateTo('login');
-                    alert('Account deleted successfully.');
-                } catch (e) {
-                    console.log('Delete error:', e);
-                    localStorage.removeItem('mehboob_user');
-                    currentUser = null;
-                    users = [];
-                    matches = [];
-                    likes = [];
-                    navigateTo('login');
-                    alert('Account deleted successfully.');
-                }
+        if (confirm('Delete account?')) {
+            try {
+                await supabaseFetch(`users?id=eq.${currentUser.id}`, { method: 'DELETE' });
+                localStorage.removeItem('mehboob_user');
+                currentUser = null; users = []; matches = []; likes = [];
+                navigateTo('login');
+                alert('Account deleted.');
+            } catch (e) {
+                localStorage.removeItem('mehboob_user');
+                currentUser = null; users = []; matches = []; likes = [];
+                navigateTo('login');
+                alert('Account deleted.');
             }
         }
     });

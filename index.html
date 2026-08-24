@@ -4,59 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Mehboob</title>
-
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-    <!-- CSS -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-    <!-- ========================================= -->
-    <!-- APP CONTAINER (SINGLE PAGE)              -->
-    <!-- ========================================= -->
     <div id="app">
-        <!-- HEADER (Fixed) -->
         <header id="app-header">
             <button id="header-back-btn" class="header-btn" style="display:none;">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h1 id="header-title">🍁 Mehboob</h1>
+            <h1 id="header-title">Mehboob</h1>
             <div id="header-right"></div>
         </header>
-
-        <!-- MAIN CONTENT (Dynamic) -->
-        <main id="app-content">
-            <!-- Rendered by JavaScript -->
-        </main>
-
-        <!-- BOTTOM NAV (Fixed) -->
+        <main id="app-content"></main>
         <nav id="bottom-nav">
-            <button data-page="home" class="nav-btn active">
-                <i class="fas fa-home"></i>
-                <span>Home</span>
-            </button>
-            <button data-page="search" class="nav-btn">
-                <i class="fas fa-search"></i>
-                <span>Search</span>
-            </button>
-            <button data-page="matches" class="nav-btn">
-                <i class="fas fa-heart"></i>
-                <span>Matches</span>
-            </button>
-            <button data-page="profile" class="nav-btn">
-                <i class="fas fa-user"></i>
-                <span>Profile</span>
-            </button>
+            <button data-page="home" class="nav-btn active"><i class="fas fa-home"></i><span>Home</span></button>
+            <button data-page="search" class="nav-btn"><i class="fas fa-search"></i><span>Search</span></button>
+            <button data-page="matches" class="nav-btn"><i class="fas fa-heart"></i><span>Matches</span></button>
+            <button data-page="profile" class="nav-btn"><i class="fas fa-user"></i><span>Profile</span></button>
         </nav>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
